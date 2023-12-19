@@ -167,7 +167,7 @@ int main(){
         while(!gameover && !quit){
             playerInput();
             drawMap();
-            sl();
+            Sleep(90);
         }
         
         if(gameover){
