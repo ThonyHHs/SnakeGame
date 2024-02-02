@@ -1,13 +1,9 @@
 #ifdef _WIN32
+
 #include<windows.h>
-
-#else
-#error "Not compatible system"
-#endif
-
+#include<conio.h>
 #include<stdio.h>
 #include<stdlib.h>
-#include<conio.h>
 
 
 #define h 15
@@ -184,3 +180,7 @@ int main(){
     return 0;
 }
 
+
+#else
+#error Not compatible system
+#endif
