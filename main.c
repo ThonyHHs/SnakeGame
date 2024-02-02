@@ -155,6 +155,7 @@ int main(){
                 }else printf("%c ", 250);
             }printf("\n");
         }
+        printf("\n\nCONTROLS: W-A-S-D\n\n\n");
         printf("[X] QUIT");
         if(toupper(getch()) == 'X'){
             quit = 1;
