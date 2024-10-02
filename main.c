@@ -1,13 +1,13 @@
 #ifdef _WIN32
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 
-#include<windows.h>
-#include<conio.h>
+#include <windows.h>
+#include <conio.h>
 
-
+#define sleep Sleep()
 
 #define h 15
 #define w 20
@@ -34,8 +34,8 @@ void fruitRand(){
 
 void tailLogic(){
     for(int i = ntail-1; i>0; i--){
-         tailx[i] = tailx[i-1];
-         taily[i] = taily[i-1];
+        tailx[i] = tailx[i-1];
+        taily[i] = taily[i-1];
     }
     tailx[0] = playerPos[0];
     taily[0] = playerPos[1];
@@ -44,23 +44,27 @@ void tailLogic(){
 void playerInput(){
     if(kbhit()){
         char in = tolower(getch());
-        if(in=='w' || in=='a' || in=='s' || in=='d'){
+
+        switch (in) {
+        case 'w':
+        case 'a':
+        case 's':
+        case 'd':
             pInput[1] = (in=='s')-(in=='w');
             pInput[0] = (in=='d')-(in=='a');
-        }
-        else if(in == 'x'){
+            break;
+        case 'x':
             quit = 1;
-        }
-
-        else if(in==39){
+        case 39:
             if(debbug==1){
                 debbug=0;
                 system("cls");
             }else debbug=1;
-        }
-
-        else if(in=='+'||in=='='){
+        case '+':
+        case '=':
             ntail++;
+        default:   
+            break;
         }
     }
 }
@@ -74,15 +78,11 @@ void debugger(){
         printf("tx[%d]: %d | ", i, tailx[i]);
     }printf("\n");
     for(int i=0; i<ntail; i++){
-        printf("tx[%d]: %d | ", i, taily[i]);
+        printf("ty[%d]: %d | ", i, taily[i]);
     }printf("\n");
 }
 
 void drawMap(){
-    // int dbhx = playerPos[0], dbhy = playerPos[1];
-    // int dbtx = tailx[0], dbty = taily[0];
-
-
     for(int i=0; i<h; i++){
         for(int j=0; j<w; j++){
             if(playerPos[0]==j && playerPos[1]==i){
@@ -135,7 +135,6 @@ void gameReset(){
     quit = gameover = ntail = 0;
     pInput[0] = 1, pInput[1] = 0;
     playerPos[0] = w/2, playerPos[1] = h/2;
-    ntail = 0;
 }
 
 int main(){
