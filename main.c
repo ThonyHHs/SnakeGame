@@ -1,68 +1,140 @@
-#ifdef _WIN32
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 
-#include <windows.h>
-#include <conio.h>
+#ifdef _WIN32
+    #include <windows.h>
+    #include <conio.h>
 
-#define sleep Sleep()
+    #define sleep Sleep
 
-#define h 15
-#define w 20
+    #define keyPressed kbhit
+    #define keyInput getch
+    #define clear "cls"
+
+#else
+    #include <termios.h>
+    #include <unistd.h>
+    
+    #define sleep usleep
+    #define keyInput getchar
+    #define clear "clear"
+
+    struct termios old;
+
+    void disableRaw() {
+        tcsetattr(STDIN_FILENO, TCSANOW, &old);
+    }
+
+    void enableRaw() {
+        tcgetattr(STDIN_FILENO, &old);
+        atexit(disableRaw);
+        
+        struct termios new = old;
+
+        new.c_lflag &= ~(ECHO | ICANON);
+
+        tcsetattr(STDIN_FILENO, TCSANOW, &new);                
+    }
+
+    int keyPressed() {
+        struct timeval tv;
+        fd_set fds;
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
+
+        return FD_ISSET(STDIN_FILENO, &fds);
+    }
+
+#endif
+
+
+// define consts and structs
+#define HEIGHT 15
+#define WIDTH 20
 #define MAX_H 20
+#define MAX_TAIL 100
+
+
+typedef struct{
+    int x;
+    int y;
+} Input;
+
+typedef struct {
+    int x;
+    int y;
+} Position;
+
+typedef struct{
+    int size;
+    int x[MAX_TAIL];
+    int y[MAX_TAIL];
+} Tail;
+
+
+typedef struct { 
+    Input input;
+    Position pos;
+    Tail tail;
+} Player;
+
+typedef struct {
+    int x;
+    int y;
+} Fruit;
+
+
+Player player = {0};
+Fruit fruit = {0};
 
 
 int debbug = 0;
 int quit;
 int gameover;
 
-int pInput[2]; // movement[x,y];   values: 0 or 1
-int playerPos[2]; // pos[x, y]
-int tailx[100];
-int taily[100];
-int ntail;
-
-int fruitPos[2]; // pos[x, y]
-
 
 void fruitRand(){
-    fruitPos[0] = rand() % w;
-    fruitPos[1] = rand() % h;
+    fruit.x = rand() % WIDTH;
+    fruit.y = rand() % HEIGHT;
 }
 
 void tailLogic(){
-    for(int i = ntail-1; i>0; i--){
-        tailx[i] = tailx[i-1];
-        taily[i] = taily[i-1];
+    for(int i = player.tail.size-1; i>0; i--) {
+        player.tail.x[i] = player.tail.x[i-1];
+        player.tail.y[i] = player.tail.y[i-1];
     }
-    tailx[0] = playerPos[0];
-    taily[0] = playerPos[1];
+    player.tail.x[0] = player.pos.x;
+    player.tail.y[0] = player.pos.y;
 }
 
 void playerInput(){
-    if(kbhit()){
-        char in = tolower(getch());
+    if(keyPressed()) {
+        char in = tolower(keyInput());
 
         switch (in) {
         case 'w':
         case 'a':
         case 's':
         case 'd':
-            pInput[1] = (in=='s')-(in=='w');
-            pInput[0] = (in=='d')-(in=='a');
+            player.input.y = (in == 's') - (in == 'w');
+            player.input.x = (in == 'd') - (in == 'a');
             break;
         case 'x':
             quit = 1;
         case 39:
-            if(debbug==1){
-                debbug=0;
-                system("cls");
-            }else debbug=1;
+            if(debbug == 1){
+                debbug = 0;
+                system(clear);
+            } else debbug = 1;
         case '+':
         case '=':
-            ntail++;
+            player.tail.size++;
+            player.tail.x[player.tail.size] = player.tail.y[player.tail.size] = -1;
         default:   
             break;
         }
@@ -70,35 +142,35 @@ void playerInput(){
 }
 
 void debugger(){
-    printf("inX: %d | inY: %d \n", pInput[0], pInput[1]);
-    printf("fx: %d | fy: %d \n", fruitPos[0], fruitPos[1]);
-    printf("hx: %d | hy: %d \n", playerPos[0], playerPos[1]);
-    printf("nt: %d \n", ntail);
-    for(int i=0; i<ntail; i++){
-        printf("tx[%d]: %d | ", i, tailx[i]);
+    printf("inX: %d | inY: %d \n", player.input.x, player.input.y);
+    printf("fx: %d | fy: %d \n", fruit.x, fruit.y);
+    printf("hx: %d | hy: %d \n", player.pos.x, player.pos.y);
+    printf("nt: %d \n", player.tail.size);
+    for(int i = 0; i < player.tail.size; i++){
+        printf("tx[%d]: %d | ", i, player.tail.x[i]);
     }printf("\n");
-    for(int i=0; i<ntail; i++){
-        printf("ty[%d]: %d | ", i, taily[i]);
+    for(int i = 0; i < player.tail.size; i++){
+        printf("ty[%d]: %d | ", i, player.tail.y[i]);
     }printf("\n");
 }
 
 void drawMap(){
-    for(int i=0; i<h; i++){
-        for(int j=0; j<w; j++){
-            if(playerPos[0]==j && playerPos[1]==i){
+    for(int i = 0; i < HEIGHT; i++){
+        for(int j = 0; j < WIDTH; j++){
+            if(player.pos.x == j && player.pos.y == i){
                 printf("$ ");
             }
-            else if(fruitPos[0]==j && fruitPos[1]==i){
+            else if(fruit.x == j && fruit.y == i){
                 printf("%c ", 220); // ▄
             }
             else{
                 int drwTail = 0;
-                for(int k=0; k<ntail; k++){
-                    if(tailx[k]==j && taily[k]==i){
+                for(int k = 0; k < player.tail.size; k++){
+                    if(player.tail.x[k] == j && player.tail.y[k] == i){
                         printf("$ ");
                         drwTail = 1;
                     }
-                    if(tailx[k]==playerPos[0] && taily[k]==playerPos[1]){
+                    if(player.tail.x[k] == player.pos.x && player.tail.y[k] == player.pos.y){
                         gameover = 1;
                     }
                 }
@@ -106,8 +178,8 @@ void drawMap(){
                     printf("%c ",250); // ·
             }
             // when player get the fruit
-            if(playerPos[0]==fruitPos[0] && playerPos[1]==fruitPos[1] && ntail<100){
-                ntail+=1;
+            if(player.pos.x == fruit.x && player.pos.y == fruit.y && player.tail.size < 100){
+                player.tail.size++;
                 fruitRand();
             }
         }printf("\n");
@@ -115,66 +187,66 @@ void drawMap(){
 
     tailLogic();
 
-    playerPos[0] += pInput[0];
-    playerPos[1] += pInput[1];
+    player.pos.x += player.input.x;
+    player.pos.y += player.input.y;
 
     // wall position reset
-    if(playerPos[0]>w-1) playerPos[0] = 0; else if(playerPos[0]<0) playerPos[0] = w-1;
-    if(playerPos[1]>h-1) playerPos[1] = 0; else if(playerPos[1]<0) playerPos[1] = h-1;
-    printf("SCORE: %d\n", ntail);
+    if(player.pos.x > WIDTH-1) player.pos.x = 0; else if(player.pos.x < 0) player.pos.x = WIDTH-1;
+    if(player.pos.y > HEIGHT-1) player.pos.y = 0; else if(player.pos.y < 0) player.pos.y = HEIGHT-1;
+    printf("SCORE: %d\n", player.tail.size);
     
     if(debbug==1){
         debugger();
     }
-    printf("\33[%iA", h+MAX_H); // go back h+n lines up
+    printf("\33[%iA", HEIGHT+MAX_H); // go back h+n lines up
 }
 
-
 void gameReset(){
-    system("cls");
-    quit = gameover = ntail = 0;
-    pInput[0] = 1, pInput[1] = 0;
-    playerPos[0] = w/2, playerPos[1] = h/2;
+    system(clear);
+    quit = gameover = 0;
+    player.input.x = 1; // the player will start moving to the right
+    player.input.y = 0;
+    player.pos.x = WIDTH/2;
+    player.pos.y = HEIGHT/2;
+    player.tail.size = 0;
 }
 
 int main(){
-    system("cls");
-
     printf("\33[?25l");
     
     while(!quit){
 
         gameReset();
 
-        for(int i=0; i<h;i++){
-            for(int j=0;j<w;j++){
-                if(i==h/2){
+        for(int i = 0; i < HEIGHT; i++){
+            for(int j = 0; j < WIDTH; j++){
+                if(i == HEIGHT/2){
                     printf("        PRESS ANY KEY TO PLAY       ");
                     break;
-                }else printf("%c ", 250);
+                }else printf("%c ", 250); // ·
             }printf("\n");
         }
         printf("\n\nCONTROLS: W-A-S-D\n\n\n");
         printf("[X] QUIT");
-        if(toupper(getch()) == 'X'){
+        if(toupper(keyInput()) == 'X'){
             quit = 1;
         }
-        system("cls");
+        system(clear);
 
         fruitRand();
 
         while(!gameover && !quit){
             playerInput();
             drawMap();
-            Sleep(90);
+            sleep(90);
         }
         
         if(gameover){
-            system("cls");
+            system(clear);
             printf("************************************\n");
             printf("              GAME OVER             \n");
             printf("************************************\n");
-            printf("TOTAL SCORE: %d\n", ntail);
+            printf("TOTAL SCORE: %d\n", player.tail.size);
             system("pause");
         }
     }
@@ -182,8 +254,3 @@ int main(){
     printf("\33[?25h");
     return 0;
 }
-
-
-#else
-#error Not compatible system
-#endif
