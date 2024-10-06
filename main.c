@@ -53,37 +53,36 @@
 #endif
 
 
-// define consts and structs
 #define HEIGHT 15
 #define WIDTH 20
 #define MAX_H 20
 #define MAX_TAIL 100
 
 
-typedef struct{
+typedef struct input{
     int x;
     int y;
 } Input;
 
-typedef struct {
+typedef struct position{
     int x;
     int y;
 } Position;
 
-typedef struct{
+typedef struct tail{
     int size;
     int x[MAX_TAIL];
     int y[MAX_TAIL];
 } Tail;
 
 
-typedef struct { 
+typedef struct player{ 
     Input input;
     Position pos;
     Tail tail;
 } Player;
 
-typedef struct {
+typedef struct fruit{
     int x;
     int y;
 } Fruit;
