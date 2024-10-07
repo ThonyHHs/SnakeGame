@@ -10,6 +10,10 @@
 
     #define keyPressed kbhit
     #define keyInput getch
+    #define init()
+
+    #define background() printf("%c ", 250) // ·
+    #define fruitIcon() printf("%c ", 220) // ▄
 
 #else
     #include <termios.h>
@@ -17,6 +21,10 @@
     
     #define sleep() usleep(100000)
     #define keyInput getchar
+    #define init() enableRaw()
+
+    #define background() printf("· ")
+    #define fruitIcon() printf("▄ ")
 
     struct termios old;
 
@@ -203,7 +211,7 @@ void drawMap() {
                 printf("$ ");
             }
             else if (fruit.x == j && fruit.y == i) { // print fruit
-                printf("%c ", 220); // ▄
+                fruitIcon();
             }
             else {
                 int drwTail = 0; // draw tail
@@ -214,7 +222,7 @@ void drawMap() {
                     }
                 }
                 if (!drwTail) {
-                    printf("%c ",250); // ·
+                    background(); 
                 }
             }
         } 
@@ -249,7 +257,7 @@ void menu() {
                 break;
             }
             else {
-                printf("%c ", 250); // ·
+                background(); 
             }
         }
         printf("\n");
@@ -273,6 +281,7 @@ void gameOverMenu() {
 
 int main() {
     printf("\33[?25l");
+    init();
     
     while (!quit) {
         gameReset();
