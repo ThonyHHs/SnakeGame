@@ -6,19 +6,17 @@
     #include <windows.h>
     #include <conio.h>
 
-    #define sleep Sleep
+    #define sleep() Sleep(100)
 
     #define keyPressed kbhit
     #define keyInput getch
-    #define clear "cls"
 
 #else
     #include <termios.h>
     #include <unistd.h>
     
-    #define sleep usleep
+    #define sleep() usleep(100000)
     #define keyInput getchar
-    #define clear "clear"
 
     struct termios old;
 
@@ -52,67 +50,48 @@
 
 #endif
 
-
+#define KEY_DEBUG 39
 #define HEIGHT 15
 #define WIDTH 20
 #define MAX_H 20
 #define MAX_TAIL 100
 
 
-typedef struct input{
+typedef struct vector {
     int x;
     int y;
-} Input;
+} Vector;
 
-typedef struct position{
-    int x;
-    int y;
-} Position;
-
-typedef struct tail{
+typedef struct tail {
     int size;
     int x[MAX_TAIL];
     int y[MAX_TAIL];
 } Tail;
 
-
-typedef struct player{ 
-    Input input;
-    Position pos;
+typedef struct player { 
+    Vector input;
+    Vector pos;
     Tail tail;
 } Player;
 
-typedef struct fruit{
-    int x;
-    int y;
-} Fruit;
-
 
 Player player = {0};
-Fruit fruit = {0};
+Vector fruit = {0};
 
 
-int debbug = 0;
+int debug = 0;
 int quit;
 int gameover;
 
 
-void fruitRand(){
-    fruit.x = rand() % WIDTH;
-    fruit.y = rand() % HEIGHT;
+// general functions
+void clearScreen() {
+    printf("\033[H\033[J");
 }
 
-void tailLogic(){
-    for(int i = player.tail.size-1; i>0; i--) {
-        player.tail.x[i] = player.tail.x[i-1];
-        player.tail.y[i] = player.tail.y[i-1];
-    }
-    player.tail.x[0] = player.pos.x;
-    player.tail.y[0] = player.pos.y;
-}
-
-void playerInput(){
-    if(keyPressed()) {
+// player functions
+void playerInput() {
+    if (keyPressed()) {
         char in = tolower(keyInput());
 
         switch (in) {
@@ -125,128 +104,189 @@ void playerInput(){
             break;
         case 'x':
             quit = 1;
-        case 39:
-            if(debbug == 1){
-                debbug = 0;
-                system(clear);
-            } else debbug = 1;
-        case '+':
+            break;
+        case KEY_DEBUG:
+            if (debug == 1) {
+                debug = 0;
+                clearScreen();
+            } else debug = 1;
+            break;
         case '=':
-            player.tail.size++;
-            player.tail.x[player.tail.size] = player.tail.y[player.tail.size] = -1;
+            if (player.tail.size < MAX_TAIL) {
+                player.tail.size++;
+                player.tail.x[player.tail.size-1] = player.pos.x;
+                player.tail.y[player.tail.size-1] = player.pos.y;
+            }
+            break;
         default:   
             break;
         }
     }
 }
 
-void debugger(){
-    printf("inX: %d | inY: %d \n", player.input.x, player.input.y);
-    printf("fx: %d | fy: %d \n", fruit.x, fruit.y);
-    printf("hx: %d | hy: %d \n", player.pos.x, player.pos.y);
-    printf("nt: %d \n", player.tail.size);
-    for(int i = 0; i < player.tail.size; i++){
-        printf("tx[%d]: %d | ", i, player.tail.x[i]);
-    }printf("\n");
-    for(int i = 0; i < player.tail.size; i++){
-        printf("ty[%d]: %d | ", i, player.tail.y[i]);
-    }printf("\n");
+void tailLogic() {
+    for (int i = player.tail.size-1; i>0; i--) {
+        player.tail.x[i] = player.tail.x[i-1];
+        player.tail.y[i] = player.tail.y[i-1];
+    }
+    player.tail.x[0] = player.pos.x;
+    player.tail.y[0] = player.pos.y;
 }
 
-void drawMap(){
-    for(int i = 0; i < HEIGHT; i++){
-        for(int j = 0; j < WIDTH; j++){
-            if(player.pos.x == j && player.pos.y == i){
-                printf("$ ");
-            }
-            else if(fruit.x == j && fruit.y == i){
-                printf("%c ", 220); // ▄
-            }
-            else{
-                int drwTail = 0;
-                for(int k = 0; k < player.tail.size; k++){
-                    if(player.tail.x[k] == j && player.tail.y[k] == i){
-                        printf("$ ");
-                        drwTail = 1;
-                    }
-                    if(player.tail.x[k] == player.pos.x && player.tail.y[k] == player.pos.y){
-                        gameover = 1;
-                    }
-                }
-                if(!drwTail)
-                    printf("%c ",250); // ·
-            }
-            // when player get the fruit
-            if(player.pos.x == fruit.x && player.pos.y == fruit.y && player.tail.size < 100){
-                player.tail.size++;
-                fruitRand();
-            }
-        }printf("\n");
+int tailCollision(Vector player, Tail tail) {
+    for (int i = 0; i<tail.size; i++) {
+        if (player.x == tail.x[i] && player.y == tail.y[i]) {
+            return 1;
+        }
     }
+    return 0;
+}
 
-    tailLogic();
+// fruit functions
+void fruitRand() {
+    fruit.x = rand() % WIDTH;
+    fruit.y = rand() % HEIGHT;
+}
 
+int fruitCollision(Vector player, Vector fruit) {
+    return player.x == fruit.x && player.y == fruit.y;
+}
+
+// debugger functions
+void debugger() {
+    printf("fx: %d | fy: %d \n", fruit.x, fruit.y);
+    printf("inX: %d | inY: %d \n", player.input.x, player.input.y);
+    printf("hx: %d | hy: %d \n", player.pos.x, player.pos.y);
+    printf("st: %d \n", player.tail.size);
+    for (int i = 0; i < player.tail.size; i++) {
+        printf("tx[%d]: %d | ", i, player.tail.x[i]);
+    } 
+    printf("\n");
+    for (int i = 0; i < player.tail.size; i++) {
+        printf("ty[%d]: %d | ", i, player.tail.y[i]);
+    } 
+    printf("\n");
+}
+
+// draw and update functions
+void update() {
+    // tail logic
+    if (player.tail.size > 0) {
+        tailLogic();
+    }
+    // movement
     player.pos.x += player.input.x;
     player.pos.y += player.input.y;
 
     // wall position reset
-    if(player.pos.x > WIDTH-1) player.pos.x = 0; else if(player.pos.x < 0) player.pos.x = WIDTH-1;
-    if(player.pos.y > HEIGHT-1) player.pos.y = 0; else if(player.pos.y < 0) player.pos.y = HEIGHT-1;
-    printf("SCORE: %d\n", player.tail.size);
+    player.pos.x = (player.pos.x + WIDTH) % WIDTH;
+    player.pos.y = (player.pos.y + HEIGHT) % HEIGHT;
     
-    if(debbug==1){
+    // player collide with tail
+    if (tailCollision(player.pos, player.tail)) {
+        gameover = 1;
+    }
+    // player collide with fruit
+    if (fruitCollision(player.pos, fruit) && player.tail.size < MAX_TAIL) {
+        player.tail.size++;
+        player.tail.x[player.tail.size-1] = player.pos.x;
+        player.tail.y[player.tail.size-1] = player.pos.y;
+
+        fruitRand();
+    }
+}
+
+void drawMap() {
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            if (player.pos.x == j && player.pos.y == i) { // print player
+                printf("$ ");
+            }
+            else if (fruit.x == j && fruit.y == i) { // print fruit
+                printf("%c ", 220); // ▄
+            }
+            else {
+                int drwTail = 0; // draw tail
+                for (int k = 0; k < player.tail.size; k++) {
+                    if (player.tail.x[k] == j && player.tail.y[k] == i) {
+                        printf("$ ");
+                        drwTail = 1;
+                    }
+                }
+                if (!drwTail) {
+                    printf("%c ",250); // ·
+                }
+            }
+        } 
+        printf("\n");
+    }
+
+    printf("SCORE: %d\n", player.tail.size);
+    if (debug==1) { // print debugger
         debugger();
     }
     printf("\33[%iA", HEIGHT+MAX_H); // go back h+n lines up
 }
 
-void gameReset(){
-    system(clear);
+void gameReset() {
+    clearScreen();
+    fruitRand();
     quit = gameover = 0;
-    player.input.x = 1; // the player will start moving to the right
+    // the player will start moving to the right
+    player.input.x = 1; 
     player.input.y = 0;
+    // the init position will be in the middle
     player.pos.x = WIDTH/2;
     player.pos.y = HEIGHT/2;
     player.tail.size = 0;
 }
 
-int main(){
+void menu() {
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            if (i == HEIGHT/2) {
+                printf("        PRESS ANY KEY TO PLAY       ");
+                break;
+            }
+            else {
+                printf("%c ", 250); // ·
+            }
+        }
+        printf("\n");
+    }
+    printf("\n\nCONTROLS: W-A-S-D\n\n\n");
+    printf("[X] QUIT");
+    if (toupper(keyInput()) == 'X') {
+        quit = 1;
+    }
+    clearScreen();
+}
+
+void gameOverMenu() {
+    clearScreen();
+    printf("************************************\n");
+    printf("              GAME OVER             \n");
+    printf("************************************\n");
+    printf("TOTAL SCORE: %d\n", player.tail.size);
+    keyInput();
+}
+
+int main() {
     printf("\33[?25l");
     
-    while(!quit){
-
+    while (!quit) {
         gameReset();
+        menu();
 
-        for(int i = 0; i < HEIGHT; i++){
-            for(int j = 0; j < WIDTH; j++){
-                if(i == HEIGHT/2){
-                    printf("        PRESS ANY KEY TO PLAY       ");
-                    break;
-                }else printf("%c ", 250); // ·
-            }printf("\n");
-        }
-        printf("\n\nCONTROLS: W-A-S-D\n\n\n");
-        printf("[X] QUIT");
-        if(toupper(keyInput()) == 'X'){
-            quit = 1;
-        }
-        system(clear);
-
-        fruitRand();
-
-        while(!gameover && !quit){
+        while (!gameover && !quit) {
             playerInput();
             drawMap();
-            sleep(90);
+            update();
+            sleep();
         }
         
-        if(gameover){
-            system(clear);
-            printf("************************************\n");
-            printf("              GAME OVER             \n");
-            printf("************************************\n");
-            printf("TOTAL SCORE: %d\n", player.tail.size);
-            system("pause");
+        if (gameover) {
+            gameOverMenu();
         }
     }
 
